@@ -1,0 +1,65 @@
+{
+  "name": "ChatDiaryLogger 每日AI日记工作流",
+  "description": "每日23:00自动触发，拉取指定对话当日消息，调用DeepSeek生成AI视角日记，保存至Obsidian。需配合 ChatDiaryLogger.js 沙盒包使用。",
+  "setup_instructions": {
+    "step1": "安装 ChatDiaryLogger.js 到 Operit 沙盒包（/sdcard/Android/data/com.ai.assistance.operit/files/packages/）",
+    "step2": "在 Operit 环境配置中设置三个变量：DIARY_AI_API_KEY、DIARY_AI_BASE_URL、DIARY_AI_MODEL",
+    "step3": "替换下方 <...> 占位符为你自己的值",
+    "step4": "在 Operit 中创建工作流，粘贴 nodes 和 connections",
+    "step5": "先用 ChatDiaryLogger:discover_db 确认数据库连通",
+    "step6": "手动触发一次 run_now 测试，确认日记能生成"
+  },
+  "nodes": [
+    {
+      "type": "trigger",
+      "id": "trigger_diary",
+      "name": "定时触发",
+      "triggerType": "schedule",
+      "triggerConfig": {
+        "schedule_type": "specific_time",
+        "specific_time": "YYYY-MM-DD 23:00",
+        "repeat": "false",
+        "enabled": "true"
+      }
+    },
+    {
+      "type": "execute",
+      "id": "start_chat",
+      "name": "启动对话服务",
+      "actionType": "start_chat_service",
+      "actionConfig": {
+        "initial_mode": "BALL",
+        "keep_if_exists": "true"
+      }
+    },
+    {
+      "type": "execute",
+      "id": "send_msg",
+      "name": "唤醒AI",
+      "actionType": "send_message_to_ai",
+      "actionConfig": {
+        "message": "[定时触发] 每日日记任务。请执行：1) ChatDiaryLogger:run_now(chat_id=<你的chat_id>, output_folder=<你的Obsidian路径>)拉取今日消息；2) 用终端curl调DeepSeek(deepseek-v4-pro)生成AI视角日记；3) 保存到Obsidian。完成后用schedule_one_time_task设置明天23:00的定时任务。",
+        "chat_id": "<你的对话窗口chat_id>",
+        "hide_user_message": "true",
+        "notify_reply": "true",
+        "persist_turn": "true",
+        "role_card_id": "<角色卡ID可选>",
+        "sender_name": "<发送者名称可选>"
+      }
+    },
+    {
+      "type": "execute",
+      "id": "delete_self",
+      "name": "删除工作流",
+      "actionType": "delete_workflow",
+      "actionConfig": {
+        "workflow_id": "<创建后填入实际workflow_id>"
+      }
+    }
+  ],
+  "connections": [
+    { "sourceNodeId": "trigger_diary", "targetNodeId": "start_chat", "condition": "on_success" },
+    { "sourceNodeId": "start_chat", "targetNodeId": "send_msg", "condition": "on_success" },
+    { "sourceNodeId": "send_msg", "targetNodeId": "delete_self", "condition": "on_success" }
+  ]
+}
